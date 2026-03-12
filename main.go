@@ -20,54 +20,40 @@ Example: esc file.go
 	wg sync.WaitGroup
 )
 
-const ioctlReadTermios = unix.TCGETS
-const ioctlWriteTermios = unix.TCSETS
-
 type state struct {
 	termios unix.Termios
 }
 
-func rawDog(fd int) error {
+func setupTerminal(fd int) (func(), error) {
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return nil, err
+	}
 	termios, err := unix.IoctlGetTermios(fd, ioctlReadTermios)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// This is copy/paste job of the make raw behavior of the term lib from
-	// golang.org/x/term but with some modifications by me.
-	termios.Iflag &^= unix.IGNBRK | unix.BRKINT | unix.PARMRK | unix.ISTRIP | unix.INLCR | unix.IGNCR | unix.ICRNL | unix.IXON
-	//termios.Oflag &^= unix.OPOST
-	//termios.Lflag &^= unix.ECHO | unix.ECHONL | unix.ICANON | unix.ISIG | unix.IEXTEN
-	termios.Lflag &^= unix.ECHO | unix.ECHONL | unix.ICANON | unix.IEXTEN
-	termios.Cflag &^= unix.CSIZE | unix.PARENB
-	termios.Cflag |= unix.CS8
-	termios.Cc[unix.VMIN] = 1
-	termios.Cc[unix.VTIME] = 0
+	// Turn post processing of output back on (for now)
+	termios.Oflag |= unix.OPOST
+	// Turn interrupt signal handling back on (ctrl-c, ctrl-d)
+	termios.Lflag |= unix.ISIG
 	if err := unix.IoctlSetTermios(fd, ioctlWriteTermios, termios); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return func() { term.Restore(int(os.Stdin.Fd()), oldState) }, nil
 }
 
 func main() {
 	// Boilerplate from https://pkg.go.dev/golang.org/x/term#pkg-overview
 	// Raw mode let's us worry about terminal sequences ourselves instead of
 	// the terminal handling them.
-	oldState, err := term.GetState(int(os.Stdin.Fd()))
+	cleanupTerminal, err := setupTerminal(int(os.Stdin.Fd()))
 	if err != nil {
 		handleError(err)
 	}
-
-	err = rawDog(int(os.Stdin.Fd()))
-	if err != nil {
-		handleError(err)
-	}
-	//// Return to "cooked" terminal
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
-
-	//TODO: holding off on raw until we need it. Right now we're just a basic
-	//			viewer.
+	defer cleanupTerminal()
 
 	if len(os.Args) != 2 {
 		usage()
