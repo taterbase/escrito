@@ -101,6 +101,9 @@ type Editor struct {
 	// The file currently being worked on. Only supports
 	// one file for now. How quaint!
 	file *File
+
+	// curline is the current line of the file
+	curline int
 }
 
 func NewEditor(w, h int) *Editor {
@@ -127,11 +130,12 @@ func (e *Editor) OpenFile(filename string) error {
 		raw:      file,
 		contents: lines,
 	}
+	e.curline = 0
 	return nil
 }
 
 func (e *Editor) Display() {
-	t := time.NewTicker(1 * time.Second)
+	t := time.NewTicker(100 * time.Millisecond)
 	for {
 		_, h, err := term.GetSize(int(os.Stdin.Fd()))
 		if err != nil {
@@ -139,13 +143,14 @@ func (e *Editor) Display() {
 		}
 		fmt.Print("\033[2J")
 		fmt.Print("\033[H")
-		fmt.Print(e.file.contents[0])
-		for i := 1; i < h; i++ {
+		fmt.Print(e.file.contents[e.curline])
+		for i, j := e.curline+1, 1; j < h && i < len(e.file.contents); i, j = i+1, j+1 {
 			fmt.Print("\n" + e.file.contents[i])
 		}
 
 		select {
 		case <-t.C:
+			e.curline = (e.curline + 1) % len(e.file.contents)
 			continue
 		}
 	}
