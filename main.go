@@ -73,6 +73,13 @@ type File struct {
 	contents []string // starting with a slice of strings... rough
 }
 
+type Mode int
+
+const (
+	NormalMode Mode = iota
+	InsertMode
+)
+
 type Editor struct {
 	// Width and height of the editor (the terminal window)
 	width  int
@@ -85,8 +92,12 @@ type Editor struct {
 	// curline is the current line of the file
 	curline int
 
+	// cursor coordinates
 	cursX int
 	cursY int
+
+	// mode
+	mode Mode
 }
 
 func NewEditor(w, h int) *Editor {
@@ -96,6 +107,8 @@ func NewEditor(w, h int) *Editor {
 
 		cursX: 1,
 		cursY: 1,
+
+		mode: NormalMode,
 	}
 }
 
@@ -181,6 +194,11 @@ func (e *Editor) Display() {
 			if e.curline < 0 {
 				e.curline = 0
 			}
+		} else if b[0] == 27 { // escape
+			if e.mode == InsertMode {
+				e.mode = NormalMode
+				fmt.Printf("\x1b[0 q")
+			}
 		} else if key == "j" {
 			e.cursX++
 		} else if key == "k" {
@@ -191,6 +209,12 @@ func (e *Editor) Display() {
 			e.cursY++
 		} else if key == "G" {
 			e.curline = len(e.file.contents) - 5
+		} else if key == "i" {
+			if e.mode == NormalMode {
+				//change cursor to bar
+				e.mode = InsertMode
+				fmt.Print("\x1b[5 q")
+			}
 		} else if key == "q" {
 			return
 		}
