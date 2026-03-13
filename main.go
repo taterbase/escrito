@@ -84,12 +84,18 @@ type Editor struct {
 
 	// curline is the current line of the file
 	curline int
+
+	cursX int
+	cursY int
 }
 
 func NewEditor(w, h int) *Editor {
 	return &Editor{
 		width:  w,
 		height: h,
+
+		cursX: 1,
+		cursY: 1,
 	}
 }
 
@@ -118,7 +124,8 @@ func (e *Editor) drawLine(n int) {
 	if n != e.curline {
 		fmt.Print("\r\n")
 	}
-	fmt.Printf("%3d: %s", n, e.file.contents[n])
+	//fmt.Printf("%3d: %s", n, e.file.contents[n])
+	fmt.Print(e.file.contents[n])
 }
 
 func (e *Editor) redraw() {
@@ -130,8 +137,8 @@ func (e *Editor) redraw() {
 		e.drawLine(i)
 	}
 	// place cursor
-	fmt.Print("\x1b[0;9H") // reposition cursor
-	fmt.Print("\x1b[?25h") // make cursor visible
+	fmt.Printf("\x1b[%d;%dH", e.cursX, e.cursY) // reposition cursor
+	fmt.Print("\x1b[?25h")                      // make cursor visible
 }
 
 func (e *Editor) Display() {
@@ -175,13 +182,13 @@ func (e *Editor) Display() {
 				e.curline = 0
 			}
 		} else if key == "j" {
-			if e.curline < len(e.file.contents)-1 {
-				e.curline++
-			}
+			e.cursX++
 		} else if key == "k" {
-			if e.curline > 0 {
-				e.curline--
-			}
+			e.cursX--
+		} else if key == "h" {
+			e.cursY--
+		} else if key == "l" {
+			e.cursY++
 		} else if key == "G" {
 			e.curline = len(e.file.contents) - 5
 		} else if key == "q" {
