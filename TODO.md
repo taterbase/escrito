@@ -7,7 +7,11 @@ If the content fits in the buffer... great! If not, the user should be able to
 scroll up and down similar to how more and less work. Eventually we'll
 introduce a cursor but for now I just want to be able to scroll a file easily.
 
-[ ] Suspend file contents in buffer
-[ ] Allow scrolling of the buffer
-[ ] ????
-[ ] PROFIT!
+[x] Suspend file contents in buffer
+[x] Allow scrolling of the buffer
+[ ] Use alternate buffer for editor
+[ ] Store cursor position for when returning from alternate buffer
+[ ] Let terminal scroll visible lines for us so we don't redraw everything
+[ ] Enable cursor movement
+[ ] Enable editing
+[ ] Enable saving!!
