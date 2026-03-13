@@ -25,5 +25,7 @@ func SetupTerminal(fd int) (func(), error) {
 		return nil, err
 	}
 
-	return func() { term.Restore(int(os.Stdin.Fd()), oldState) }, nil
+	return func() {
+		term.Restore(int(os.Stdin.Fd()), oldState)
+	}, nil
 }

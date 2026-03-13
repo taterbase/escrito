@@ -53,9 +53,7 @@ func main() {
 	if err != nil {
 		handleError(err)
 	}
-	wg.Add(1)
 	editor.Display()
-	wg.Wait()
 }
 
 // Teach'em son
@@ -116,19 +114,31 @@ func (e *Editor) OpenFile(filename string) error {
 	return nil
 }
 
-func (e *Editor) redraw() {
-	fmt.Print("\033[2J")
-	fmt.Print("\033[H")
-	fmt.Print(e.file.contents[e.curline])
-
-	for i, j := e.curline+1, 1; j < e.height && i < len(e.file.contents); i, j = i+1, j+1 {
-		fmt.Print("\n" + e.file.contents[i])
+func (e *Editor) drawLine(n int) {
+	if n != e.curline {
+		fmt.Print("\r\n")
 	}
+	fmt.Printf("%3d: %s", n, e.file.contents[n])
+}
+
+func (e *Editor) redraw() {
+	fmt.Print("\x1b[?25l") // hide cursor
+	fmt.Print("\x1b[2J")   //clear screen
+	fmt.Print("\x1b[H")    // reset to home
+	e.drawLine(e.curline)
+	for i, j := e.curline+1, 1; j < e.height && i < len(e.file.contents); i, j = i+1, j+1 {
+		e.drawLine(i)
+	}
+	// place cursor
+	fmt.Print("\x1b[0;9H") // reposition cursor
+	fmt.Print("\x1b[?25h") // make cursor visible
 }
 
 func (e *Editor) Display() {
 	e.redraw()
 
+	// Better to use /dev/tty as it will always be user input at terminal.
+	// Pulling from stdin would not work if something was piped in
 	tty, err := os.Open("/dev/tty")
 	if err != nil {
 		panic(err)
@@ -154,7 +164,17 @@ func (e *Editor) Display() {
 			panic(err)
 		}
 		key := string(b[:n])
-		if key == "j" {
+		if b[0] == 4 {
+			e.curline = (e.curline + e.height/2)
+			if e.curline >= len(e.file.contents) {
+				e.curline = len(e.file.contents) - 1
+			}
+		} else if b[0] == 21 {
+			e.curline = (e.curline - e.height/2)
+			if e.curline < 0 {
+				e.curline = 0
+			}
+		} else if key == "j" {
 			if e.curline < len(e.file.contents)-1 {
 				e.curline++
 			}
@@ -162,6 +182,10 @@ func (e *Editor) Display() {
 			if e.curline > 0 {
 				e.curline--
 			}
+		} else if key == "G" {
+			e.curline = len(e.file.contents) - 5
+		} else if key == "q" {
+			return
 		}
 		e.redraw()
 	}
