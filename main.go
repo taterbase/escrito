@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
-	"time"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
+
+	tterm "tatersoft.com/escrito/term"
 )
 
 var (
@@ -24,32 +27,11 @@ type state struct {
 	termios unix.Termios
 }
 
-func setupTerminal(fd int) (func(), error) {
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return nil, err
-	}
-	termios, err := unix.IoctlGetTermios(fd, ioctlReadTermios)
-	if err != nil {
-		return nil, err
-	}
-
-	// Turn post processing of output back on (for now)
-	termios.Oflag |= unix.OPOST
-	// Turn interrupt signal handling back on (ctrl-c, ctrl-d)
-	termios.Lflag |= unix.ISIG
-	if err := unix.IoctlSetTermios(fd, ioctlWriteTermios, termios); err != nil {
-		return nil, err
-	}
-
-	return func() { term.Restore(int(os.Stdin.Fd()), oldState) }, nil
-}
-
 func main() {
 	// Boilerplate from https://pkg.go.dev/golang.org/x/term#pkg-overview
 	// Raw mode let's us worry about terminal sequences ourselves instead of
 	// the terminal handling them.
-	cleanupTerminal, err := setupTerminal(int(os.Stdin.Fd()))
+	cleanupTerminal, err := tterm.SetupTerminal(int(os.Stdin.Fd()))
 	if err != nil {
 		handleError(err)
 	}
@@ -134,24 +116,53 @@ func (e *Editor) OpenFile(filename string) error {
 	return nil
 }
 
-func (e *Editor) Display() {
-	t := time.NewTicker(100 * time.Millisecond)
-	for {
-		_, h, err := term.GetSize(int(os.Stdin.Fd()))
-		if err != nil {
-			handleError(err)
-		}
-		fmt.Print("\033[2J")
-		fmt.Print("\033[H")
-		fmt.Print(e.file.contents[e.curline])
-		for i, j := e.curline+1, 1; j < h && i < len(e.file.contents); i, j = i+1, j+1 {
-			fmt.Print("\n" + e.file.contents[i])
-		}
+func (e *Editor) redraw() {
+	fmt.Print("\033[2J")
+	fmt.Print("\033[H")
+	fmt.Print(e.file.contents[e.curline])
 
-		select {
-		case <-t.C:
-			e.curline = (e.curline + 1) % len(e.file.contents)
-			continue
+	for i, j := e.curline+1, 1; j < e.height && i < len(e.file.contents); i, j = i+1, j+1 {
+		fmt.Print("\n" + e.file.contents[i])
+	}
+}
+
+func (e *Editor) Display() {
+	e.redraw()
+
+	tty, err := os.Open("/dev/tty")
+	if err != nil {
+		panic(err)
+	}
+
+	resize := make(chan os.Signal, 1)
+	signal.Notify(resize, syscall.SIGWINCH)
+	go func() {
+		for range resize {
+			_, h, err := term.GetSize(int(os.Stdin.Fd()))
+			if err != nil {
+				handleError(err)
+			}
+			e.height = h
+			e.redraw()
 		}
+	}()
+
+	var b [256]byte
+	for {
+		n, err := tty.Read(b[:])
+		if err != nil {
+			panic(err)
+		}
+		key := string(b[:n])
+		if key == "j" {
+			if e.curline < len(e.file.contents)-1 {
+				e.curline++
+			}
+		} else if key == "k" {
+			if e.curline > 0 {
+				e.curline--
+			}
+		}
+		e.redraw()
 	}
 }

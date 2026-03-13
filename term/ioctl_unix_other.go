@@ -1,6 +1,6 @@
 //go:build aix || linux || solaris || zos
 
-package main
+package term
 
 import "golang.org/x/sys/unix"
 
