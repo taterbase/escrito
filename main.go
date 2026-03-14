@@ -113,7 +113,7 @@ func NewEditor(w, h int) *Editor {
 }
 
 func (e *Editor) OpenFile(filename string) error {
-	file, err := os.Open(filename)
+	file, err := os.OpenFile(filename, os.O_RDWR, 0)
 	if err != nil {
 		return err
 	}
@@ -154,6 +154,11 @@ func (e *Editor) redraw() {
 	fmt.Print("\x1b[?25h")                      // make cursor visible
 }
 
+func (e *Editor) saveFile() error {
+	err := os.WriteFile(e.file.raw.Name(), []byte(strings.Join(e.file.contents, "\n")), 0)
+	return err
+}
+
 func (e *Editor) Display() {
 	e.redraw()
 
@@ -184,12 +189,17 @@ func (e *Editor) Display() {
 			panic(err)
 		}
 		key := string(b[:n])
-		if b[0] == 4 {
+		if b[0] == 4 { // Ctrl-D
 			e.curline = (e.curline + e.height/2)
 			if e.curline >= len(e.file.contents) {
 				e.curline = len(e.file.contents) - 1
 			}
-		} else if b[0] == 21 {
+		} else if b[0] == 19 { // Ctrl-S
+			err := e.saveFile()
+			if err != nil {
+				handleError(err)
+			}
+		} else if b[0] == 21 { // Ctrl-U
 			e.curline = (e.curline - e.height/2)
 			if e.curline < 0 {
 				e.curline = 0
