@@ -89,12 +89,17 @@ type Editor struct {
 	// one file for now. How quaint!
 	file *File
 
-	// topline is the current line of the file
+	// topline is the top most visible line in the window
 	topline int
 
 	// cursor coordinates
-	cursX int
-	cursY int
+	cursY     int
+	cursX     int
+	lastCursX int
+
+	// visual cursor
+	visCursX int
+	visCursY int
 
 	// mode
 	mode Mode
@@ -105,11 +110,18 @@ func NewEditor(w, h int) *Editor {
 		width:  w,
 		height: h,
 
-		cursX: 1,
-		cursY: 1,
+		cursY: 0,
+		cursX: 0,
+
+		visCursX: 1,
+		visCursY: 1,
 
 		mode: NormalMode,
 	}
+}
+
+func (e *Editor) CurLine() int {
+	return e.topline + e.cursY
 }
 
 func (e *Editor) OpenFile(filename string) error {
@@ -150,13 +162,35 @@ func (e *Editor) redraw() {
 		e.drawLine(i)
 	}
 	// place cursor
-	fmt.Printf("\x1b[%d;%dH", e.cursX, e.cursY) // reposition cursor
-	fmt.Print("\x1b[?25h")                      // make cursor visible
+	fmt.Printf("\x1b[%d;%dH", e.visCursY, e.visCursX) // reposition cursor
+	fmt.Print("\x1b[?25h")                            // make cursor visible
 }
 
 func (e *Editor) saveFile() error {
 	err := os.WriteFile(e.file.raw.Name(), []byte(strings.Join(e.file.contents, "\n")), 0)
 	return err
+}
+
+func (e *Editor) resetVisualCursor() {
+	e.visCursX = 1
+	line := e.file.contents[e.CurLine()]
+	if e.cursX > len(line)-1 {
+		if len(line) > 0 {
+			e.cursX = len(line) - 1
+		} else {
+			e.cursX = 0
+		}
+	}
+	for _, char := range line[:e.cursX] {
+		e.visCursX += 1
+		if char == '\t' {
+			e.visCursX += 7
+		}
+	}
+
+	e.visCursY = e.cursY + 1
+
+	e.redraw()
 }
 
 func (e *Editor) Display() {
@@ -210,17 +244,31 @@ func (e *Editor) Display() {
 				fmt.Printf("\x1b[0 q")
 			}
 		} else if key == "j" {
-			e.cursX++
+			if e.CurLine() < len(e.file.contents)-1 {
+				e.cursY++
+				e.cursX = e.lastCursX
+				e.resetVisualCursor()
+			}
 		} else if key == "k" {
-			if e.cursX > 1 {
-				e.cursX--
+			if e.cursY > 1 {
+				if e.cursY > 0 {
+					e.cursY--
+					e.cursX = e.lastCursX
+					e.resetVisualCursor()
+				}
 			}
 		} else if key == "h" {
-			if e.cursY > 1 {
-				e.cursY--
+			if e.cursX > 0 {
+				e.cursX--
+				e.lastCursX = e.cursX
+				e.resetVisualCursor()
 			}
 		} else if key == "l" {
-			e.cursY++
+			if e.cursX < len(e.file.contents[e.CurLine()]) {
+				e.cursX++
+				e.lastCursX = e.cursX
+				e.resetVisualCursor()
+			}
 		} else if key == "G" {
 			e.topline = len(e.file.contents) - 5
 		} else if key == "i" {
