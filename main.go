@@ -89,8 +89,8 @@ type Editor struct {
 	// one file for now. How quaint!
 	file *File
 
-	// curline is the current line of the file
-	curline int
+	// topline is the current line of the file
+	topline int
 
 	// cursor coordinates
 	cursX int
@@ -129,12 +129,12 @@ func (e *Editor) OpenFile(filename string) error {
 		raw:      file,
 		contents: lines,
 	}
-	e.curline = 0
+	e.topline = 0
 	return nil
 }
 
 func (e *Editor) drawLine(n int) {
-	if n != e.curline {
+	if n != e.topline {
 		fmt.Print("\r\n")
 	}
 	//fmt.Printf("%3d: %s", n, e.file.contents[n])
@@ -145,8 +145,8 @@ func (e *Editor) redraw() {
 	fmt.Print("\x1b[?25l") // hide cursor
 	fmt.Print("\x1b[2J")   //clear screen
 	fmt.Print("\x1b[H")    // reset to home
-	e.drawLine(e.curline)
-	for i, j := e.curline+1, 1; j < e.height && i < len(e.file.contents); i, j = i+1, j+1 {
+	e.drawLine(e.topline)
+	for i, j := e.topline+1, 1; j < e.height && i < len(e.file.contents); i, j = i+1, j+1 {
 		e.drawLine(i)
 	}
 	// place cursor
@@ -190,9 +190,9 @@ func (e *Editor) Display() {
 		}
 		key := string(b[:n])
 		if b[0] == 4 { // Ctrl-D
-			e.curline = (e.curline + e.height/2)
-			if e.curline >= len(e.file.contents) {
-				e.curline = len(e.file.contents) - 1
+			e.topline = (e.topline + e.height/2)
+			if e.topline >= len(e.file.contents) {
+				e.topline = len(e.file.contents) - 1
 			}
 		} else if b[0] == 19 { // Ctrl-S
 			err := e.saveFile()
@@ -200,9 +200,9 @@ func (e *Editor) Display() {
 				handleError(err)
 			}
 		} else if b[0] == 21 { // Ctrl-U
-			e.curline = (e.curline - e.height/2)
-			if e.curline < 0 {
-				e.curline = 0
+			e.topline = (e.topline - e.height/2)
+			if e.topline < 0 {
+				e.topline = 0
 			}
 		} else if b[0] == 27 { // escape
 			if e.mode == InsertMode {
@@ -212,13 +212,17 @@ func (e *Editor) Display() {
 		} else if key == "j" {
 			e.cursX++
 		} else if key == "k" {
-			e.cursX--
+			if e.cursX > 1 {
+				e.cursX--
+			}
 		} else if key == "h" {
-			e.cursY--
+			if e.cursY > 1 {
+				e.cursY--
+			}
 		} else if key == "l" {
 			e.cursY++
 		} else if key == "G" {
-			e.curline = len(e.file.contents) - 5
+			e.topline = len(e.file.contents) - 5
 		} else if key == "i" {
 			if e.mode == NormalMode {
 				//change cursor to bar
