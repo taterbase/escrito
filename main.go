@@ -106,6 +106,8 @@ type Editor struct {
 	mode Mode
 
 	workingLine []string
+
+	isDeleting bool
 }
 
 func NewEditor(w, h int) *Editor {
@@ -177,9 +179,13 @@ func (e *Editor) saveFile() error {
 func (e *Editor) resetVisualCursor() {
 	e.visCursX = 1
 	line := e.file.contents[e.CurLine()]
-	if e.cursX > len(line)-1 {
+	xEnd := len(line)
+	if e.mode == NormalMode {
+		xEnd--
+	}
+	if e.cursX > xEnd {
 		if len(line) > 0 {
-			e.cursX = len(line) - 1
+			e.cursX = xEnd
 		} else {
 			e.cursX = 0
 		}
@@ -222,12 +228,10 @@ func (e *Editor) handleKeyPress(b []byte) {
 				e.resetVisualCursor()
 			}
 		} else if keyString == "k" {
-			if e.cursY > 1 {
-				if e.cursY > 0 {
-					e.cursY--
-					e.cursX = e.lastCursX
-					e.resetVisualCursor()
-				}
+			if e.cursY > 0 {
+				e.cursY--
+				e.cursX = e.lastCursX
+				e.resetVisualCursor()
 			}
 		} else if keyString == "h" {
 			if e.cursX > 0 {
@@ -250,6 +254,35 @@ func (e *Editor) handleKeyPress(b []byte) {
 				fmt.Print("\x1b[5 q")
 				e.workingLine = strings.Split(e.file.contents[e.CurLine()], "")
 			}
+		} else if keyString == "a" {
+			if e.mode == NormalMode {
+				//change cursor to bar
+				e.mode = InsertMode
+				fmt.Print("\x1b[5 q")
+				e.workingLine = strings.Split(e.file.contents[e.CurLine()], "")
+				e.cursX++
+				e.resetVisualCursor()
+			}
+		} else if keyString == "d" {
+			if e.mode == NormalMode {
+				if e.isDeleting {
+					e.file.contents = append(e.file.contents[:e.CurLine()], e.file.contents[e.CurLine()+1:]...)
+					e.isDeleting = false
+				} else {
+					e.isDeleting = true
+				}
+			}
+		} else if keyString == "o" {
+			if e.mode == NormalMode {
+				//change cursor to bar
+				e.mode = InsertMode
+				e.isDeleting = false
+				fmt.Print("\x1b[5 q")
+				e.workingLine = []string{}
+				e.file.contents = slices.Insert(e.file.contents, e.CurLine()+1, "")
+				e.cursY++
+				e.resetVisualCursor()
+			}
 		} else if keyString == "q" {
 			return
 		}
@@ -259,16 +292,30 @@ func (e *Editor) handleKeyPress(b []byte) {
 			if e.mode == InsertMode {
 				e.mode = NormalMode
 				fmt.Printf("\x1b[0 q")
+				return
 			}
-		}
-		if b[0] >= 32 || b[0] <= 126 {
+		} else if b[0] == 127 {
+			e.delete(e.cursX - 1)
+		} else if b[0] >= 32 || b[0] <= 126 {
 			e.insert(string(b))
 		}
 	}
 }
 
+func (e *Editor) delete(idx int) {
+	e.workingLine = append(e.workingLine[:idx], e.workingLine[idx+1:]...)
+	e.file.contents[e.CurLine()] = strings.Join(e.workingLine, "")
+	e.cursX--
+	e.resetVisualCursor()
+	e.redraw()
+}
+
 func (e *Editor) insert(char string) {
 	e.workingLine = slices.Insert(e.workingLine, e.cursX, char)
+	e.file.contents[e.CurLine()] = strings.Join(e.workingLine, "")
+	e.cursX++
+	e.resetVisualCursor()
+	e.redraw()
 }
 
 func (e *Editor) Display() {
