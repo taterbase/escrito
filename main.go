@@ -292,6 +292,7 @@ func (e *Editor) handleKeyPress(b []byte) {
 			if e.mode == InsertMode {
 				e.mode = NormalMode
 				fmt.Printf("\x1b[0 q")
+				e.resetVisualCursor()
 				return
 			}
 		} else if b[0] == 127 {
@@ -307,7 +308,6 @@ func (e *Editor) delete(idx int) {
 	e.file.contents[e.CurLine()] = strings.Join(e.workingLine, "")
 	e.cursX--
 	e.resetVisualCursor()
-	e.redraw()
 }
 
 func (e *Editor) insert(char string) {
@@ -315,7 +315,6 @@ func (e *Editor) insert(char string) {
 	e.file.contents[e.CurLine()] = strings.Join(e.workingLine, "")
 	e.cursX++
 	e.resetVisualCursor()
-	e.redraw()
 }
 
 func (e *Editor) Display() {
