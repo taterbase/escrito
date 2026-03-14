@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -103,6 +104,8 @@ type Editor struct {
 
 	// mode
 	mode Mode
+
+	workingLine []string
 }
 
 func NewEditor(w, h int) *Editor {
@@ -193,6 +196,81 @@ func (e *Editor) resetVisualCursor() {
 	e.redraw()
 }
 
+func (e *Editor) handleKeyPress(b []byte) {
+	switch e.mode {
+	case NormalMode:
+		keyString := string(b)
+		if b[0] == 4 { // Ctrl-D
+			e.topline = (e.topline + e.height/2)
+			if e.topline >= len(e.file.contents) {
+				e.topline = len(e.file.contents) - 1
+			}
+		} else if b[0] == 19 { // Ctrl-S
+			err := e.saveFile()
+			if err != nil {
+				handleError(err)
+			}
+		} else if b[0] == 21 { // Ctrl-U
+			e.topline = (e.topline - e.height/2)
+			if e.topline < 0 {
+				e.topline = 0
+			}
+		} else if keyString == "j" {
+			if e.CurLine() < len(e.file.contents)-1 {
+				e.cursY++
+				e.cursX = e.lastCursX
+				e.resetVisualCursor()
+			}
+		} else if keyString == "k" {
+			if e.cursY > 1 {
+				if e.cursY > 0 {
+					e.cursY--
+					e.cursX = e.lastCursX
+					e.resetVisualCursor()
+				}
+			}
+		} else if keyString == "h" {
+			if e.cursX > 0 {
+				e.cursX--
+				e.lastCursX = e.cursX
+				e.resetVisualCursor()
+			}
+		} else if keyString == "l" {
+			if e.cursX < len(e.file.contents[e.CurLine()]) {
+				e.cursX++
+				e.lastCursX = e.cursX
+				e.resetVisualCursor()
+			}
+		} else if keyString == "G" {
+			e.topline = len(e.file.contents) - 5
+		} else if keyString == "i" {
+			if e.mode == NormalMode {
+				//change cursor to bar
+				e.mode = InsertMode
+				fmt.Print("\x1b[5 q")
+				e.workingLine = strings.Split(e.file.contents[e.CurLine()], "")
+			}
+		} else if keyString == "q" {
+			return
+		}
+		e.redraw()
+	case InsertMode:
+		if b[0] == 27 { // escape
+			if e.mode == InsertMode {
+				e.mode = NormalMode
+				fmt.Printf("\x1b[0 q")
+			}
+		}
+		if b[0] >= 32 || b[0] <= 126 {
+			e.insert(string(b))
+		}
+	}
+}
+
+func (e *Editor) insert(char string) {
+	e.workingLine = slices.Insert(e.workingLine, e.cursX, char)
+}
+
 func (e *Editor) Display() {
 	e.redraw()
 
@@ -222,64 +300,6 @@ func (e *Editor) Display() {
 		if err != nil {
 			panic(err)
 		}
-		key := string(b[:n])
-		if b[0] == 4 { // Ctrl-D
-			e.topline = (e.topline + e.height/2)
-			if e.topline >= len(e.file.contents) {
-				e.topline = len(e.file.contents) - 1
-			}
-		} else if b[0] == 19 { // Ctrl-S
-			err := e.saveFile()
-			if err != nil {
-				handleError(err)
-			}
-		} else if b[0] == 21 { // Ctrl-U
-			e.topline = (e.topline - e.height/2)
-			if e.topline < 0 {
-				e.topline = 0
-			}
-		} else if b[0] == 27 { // escape
-			if e.mode == InsertMode {
-				e.mode = NormalMode
-				fmt.Printf("\x1b[0 q")
-			}
-		} else if key == "j" {
-			if e.CurLine() < len(e.file.contents)-1 {
-				e.cursY++
-				e.cursX = e.lastCursX
-				e.resetVisualCursor()
-			}
-		} else if key == "k" {
-			if e.cursY > 1 {
-				if e.cursY > 0 {
-					e.cursY--
-					e.cursX = e.lastCursX
-					e.resetVisualCursor()
-				}
-			}
-		} else if key == "h" {
-			if e.cursX > 0 {
-				e.cursX--
-				e.lastCursX = e.cursX
-				e.resetVisualCursor()
-			}
-		} else if key == "l" {
-			if e.cursX < len(e.file.contents[e.CurLine()]) {
-				e.cursX++
-				e.lastCursX = e.cursX
-				e.resetVisualCursor()
-			}
-		} else if key == "G" {
-			e.topline = len(e.file.contents) - 5
-		} else if key == "i" {
-			if e.mode == NormalMode {
-				//change cursor to bar
-				e.mode = InsertMode
-				fmt.Print("\x1b[5 q")
-			}
-		} else if key == "q" {
-			return
-		}
-		e.redraw()
+		e.handleKeyPress(b[:n])
 	}
 }
