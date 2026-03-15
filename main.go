@@ -305,11 +305,11 @@ func (e *Editor) handleKeyPress(b []byte) {
 			newLine := e.workingLine[e.cursX:]
 			e.workingLine = e.workingLine[:e.cursX]
 			e.file.contents[e.CurLine()] = strings.Join(e.workingLine, "")
-			e.file.contents = slices.Insert(e.file.contents, e.CurLine() + 1,
+			e.file.contents = slices.Insert(e.file.contents, e.CurLine()+1,
 				strings.Join(newLine, ""))
 			e.workingLine = newLine
 			e.cursY++
-			e.cursX=0
+			e.cursX = 0
 			e.resetVisualCursor()
 		} else if b[0] == 127 { //TODO: this is not robust (backspace)
 			e.delete(e.cursX - 1)
