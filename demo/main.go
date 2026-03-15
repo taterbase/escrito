@@ -22,7 +22,8 @@ func main() {
 
 	var b [256]byte
 	for {
-		_, _ = tty.Read(b[:])
-		fmt.Println(int(b[0]))
+		n, _ := tty.Read(b[:])
+		fmt.Printf("%d\n", b[:n])
+		fmt.Printf("%x\n\n", b[:n])
 	}
 }
