@@ -100,7 +100,6 @@ type Editor struct {
 
 	// visual cursor
 	visCursX int
-	visCursY int
 
 	// mode
 	mode Mode
@@ -119,7 +118,6 @@ func NewEditor(w, h int) *Editor {
 		cursX: 0,
 
 		visCursX: 1,
-		visCursY: 1,
 
 		mode: NormalMode,
 	}
@@ -167,8 +165,8 @@ func (e *Editor) redraw() {
 		e.drawLine(i)
 	}
 	// place cursor
-	fmt.Printf("\x1b[%d;%dH", e.visCursY, e.visCursX) // reposition cursor
-	fmt.Print("\x1b[?25h")                            // make cursor visible
+	fmt.Printf("\x1b[%d;%dH", e.cursY+1, e.visCursX) // reposition cursor
+	fmt.Print("\x1b[?25h")                           // make cursor visible
 }
 
 func (e *Editor) saveFile() error {
@@ -197,7 +195,13 @@ func (e *Editor) resetVisualCursor() {
 		}
 	}
 
-	e.visCursY = e.cursY + 1
+	if e.CurLine()-e.topline >= e.height {
+		e.topline++
+		e.cursY--
+	} else if e.CurLine() < e.topline {
+		e.topline--
+		e.cursY++
+	}
 
 	e.redraw()
 }
@@ -228,7 +232,7 @@ func (e *Editor) handleKeyPress(b []byte) {
 				e.resetVisualCursor()
 			}
 		} else if keyString == "k" {
-			if e.cursY > 0 {
+			if e.CurLine() > 0 {
 				e.cursY--
 				e.cursX = e.lastCursX
 				e.resetVisualCursor()
