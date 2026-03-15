@@ -189,9 +189,14 @@ func (e *Editor) resetVisualCursor() {
 		}
 	}
 	for _, char := range line[:e.cursX] {
-		e.visCursX += 1
 		if char == '\t' {
-			e.visCursX += 7
+			// I don't really understand why this is necessary
+			e.visCursX--
+			e.visCursX += 8
+			e.visCursX -= e.visCursX % 8
+			e.visCursX++
+		} else {
+			e.visCursX++
 		}
 	}
 
@@ -293,13 +298,20 @@ func (e *Editor) handleKeyPress(b []byte) {
 		e.redraw()
 	case InsertMode:
 		if b[0] == 27 { // escape
-			if e.mode == InsertMode {
-				e.mode = NormalMode
-				fmt.Printf("\x1b[0 q")
-				e.resetVisualCursor()
-				return
-			}
-		} else if b[0] == 127 {
+			e.mode = NormalMode
+			fmt.Printf("\x1b[0 q")
+			e.resetVisualCursor()
+		} else if b[0] == 13 { // enter/return
+			newLine := e.workingLine[e.cursX:]
+			e.workingLine = e.workingLine[:e.cursX]
+			e.file.contents[e.CurLine()] = strings.Join(e.workingLine, "")
+			e.file.contents = slices.Insert(e.file.contents, e.CurLine() + 1,
+				strings.Join(newLine, ""))
+			e.workingLine = newLine
+			e.cursY++
+			e.cursX=0
+			e.resetVisualCursor()
+		} else if b[0] == 127 { //TODO: this is not robust (backspace)
 			e.delete(e.cursX - 1)
 		} else if b[0] >= 32 || b[0] <= 126 {
 			e.insert(string(b))
@@ -308,9 +320,23 @@ func (e *Editor) handleKeyPress(b []byte) {
 }
 
 func (e *Editor) delete(idx int) {
-	e.workingLine = append(e.workingLine[:idx], e.workingLine[idx+1:]...)
-	e.file.contents[e.CurLine()] = strings.Join(e.workingLine, "")
-	e.cursX--
+	// Handling backspacing into the previous line
+	if idx == -1 {
+		if e.cursY == 0 {
+			return
+		}
+		above := e.file.contents[e.CurLine()-1]
+		e.cursX = len(above)
+		e.file.contents[e.CurLine()-1] = above +
+			strings.Join(e.workingLine, "")
+		e.file.contents = append(e.file.contents[:e.CurLine()], e.file.contents[e.CurLine()+1:]...)
+		e.cursY--
+		e.workingLine = strings.Split(e.file.contents[e.CurLine()], "")
+	} else {
+		e.workingLine = append(e.workingLine[:idx], e.workingLine[idx+1:]...)
+		e.file.contents[e.CurLine()] = strings.Join(e.workingLine, "")
+		e.cursX--
+	}
 	e.resetVisualCursor()
 }
 
