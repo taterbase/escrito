@@ -105,8 +105,10 @@ type Editor struct {
 	mode Mode
 
 	workingLine []string
+	clipboard string
 
 	isDeleting bool
+	isChanging bool
 }
 
 func NewEditor(w, h int) *Editor {
@@ -264,22 +266,45 @@ func (e *Editor) handleKeyPress(b []byte) {
 				e.workingLine = strings.Split(e.file.contents[e.CurLine()], "")
 			}
 		} else if keyString == "a" {
-			if e.mode == NormalMode {
-				//change cursor to bar
+			//change cursor to bar
+			e.mode = InsertMode
+			fmt.Print("\x1b[5 q")
+			e.workingLine = strings.Split(e.file.contents[e.CurLine()], "")
+			e.cursX++
+			e.resetVisualCursor()
+		} else if keyString == "A" {
+			e.mode = InsertMode
+			fmt.Print("\x1b[5 q")
+			e.workingLine = strings.Split(e.file.contents[e.CurLine()], "")
+			e.cursX = len(e.workingLine)
+			e.resetVisualCursor()
+		} else if keyString == "c" {
+			if e.isChanging {
+				// Delete line and enter insert mode
 				e.mode = InsertMode
-				fmt.Print("\x1b[5 q")
-				e.workingLine = strings.Split(e.file.contents[e.CurLine()], "")
-				e.cursX++
+				e.workingLine = e.workingLine[:0]
+				e.file.contents[e.CurLine()] = ""
+				e.cursX = 0
 				e.resetVisualCursor()
+				e.isChanging = false
+			} else {
+				e.isChanging = true
 			}
 		} else if keyString == "d" {
-			if e.mode == NormalMode {
 				if e.isDeleting {
+					e.clipboard = e.file.contents[e.CurLine()]
 					e.file.contents = append(e.file.contents[:e.CurLine()], e.file.contents[e.CurLine()+1:]...)
 					e.isDeleting = false
 				} else {
 					e.isDeleting = true
 				}
+		} else if keyString == "P" {
+			if len(e.clipboard) > 0 {
+				slices.Insert(e.file.contents, e.CurLine(), e.clipboard)
+			}
+		} else if keyString == "p" {
+			if len(e.clipboard) > 0 {
+				slices.Insert(e.file.contents, e.CurLine()+1, e.clipboard)
 			}
 		} else if keyString == "o" {
 			if e.mode == NormalMode {
@@ -292,8 +317,6 @@ func (e *Editor) handleKeyPress(b []byte) {
 				e.cursY++
 				e.resetVisualCursor()
 			}
-		} else if keyString == "q" {
-			return
 		}
 		e.redraw()
 	case InsertMode:
