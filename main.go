@@ -110,6 +110,12 @@ type Editor struct {
 	isDeleting bool
 	isChanging bool
 	isYanking bool
+	isCommanding bool
+
+	// This is super ghetto but just for now
+	// A way to kill the infinite for loop looking for
+	// key strokes.
+	isOpen bool
 }
 
 func NewEditor(w, h int) *Editor {
@@ -123,6 +129,8 @@ func NewEditor(w, h int) *Editor {
 		visCursX: 1,
 
 		mode: NormalMode,
+
+		isOpen: true,
 	}
 }
 
@@ -327,11 +335,28 @@ func (e *Editor) handleKeyPress(b []byte) {
 				e.cursY++
 				e.resetVisualCursor()
 			}
+		} else if keyString == "w" {
+			if e.isCommanding {
+				err := e.saveFile()
+				if err != nil {
+					panic(err)
+				}
+			}
+		} else if keyString == "q" {
+			if e.isCommanding {
+				e.isOpen = false
+			}
+		} else if keyString == ":" {
+			e.isCommanding = true
 		}
 		e.redraw()
 	case InsertMode:
 		if b[0] == 27 { // escape
 			e.mode = NormalMode
+			e.isCommanding = false
+			e.isYanking = false
+			e.isChanging = false
+			e.isDeleting = false
 			fmt.Printf("\x1b[0 q")
 			e.resetVisualCursor()
 		} else if b[0] == 13 { // enter/return
@@ -404,7 +429,7 @@ func (e *Editor) Display() {
 	}()
 
 	var b [256]byte
-	for {
+	for e.isOpen {
 		n, err := tty.Read(b[:])
 		if err != nil {
 			panic(err)
