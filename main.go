@@ -109,6 +109,7 @@ type Editor struct {
 
 	isDeleting bool
 	isChanging bool
+	isYanking bool
 }
 
 func NewEditor(w, h int) *Editor {
@@ -303,12 +304,18 @@ func (e *Editor) handleKeyPress(b []byte) {
 				}
 		} else if keyString == "P" {
 			if len(e.clipboard) > 0 {
-				slices.Insert(e.file.contents, e.CurLine(), e.clipboard)
+				e.file.contents = slices.Insert(e.file.contents, e.CurLine(), e.clipboard)
 			}
 		} else if keyString == "p" {
 			if len(e.clipboard) > 0 {
-				slices.Insert(e.file.contents, e.CurLine()+1, e.clipboard)
+				e.file.contents = slices.Insert(e.file.contents, e.CurLine()+1, e.clipboard)
 			}
+		} else if keyString == "y" {
+			if e.isYanking {
+				e.clipboard = e.file.contents[e.CurLine()]
+				e.isYanking = false
+			}
+			e.isYanking = true
 		} else if keyString == "o" {
 			if e.mode == NormalMode {
 				//change cursor to bar
