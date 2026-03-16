@@ -313,6 +313,7 @@ func (e *Editor) handleKeyPress(b []byte) {
 		} else if keyString == "P" {
 			if len(e.clipboard) > 0 {
 				e.file.contents = slices.Insert(e.file.contents, e.CurLine(), e.clipboard)
+				e.cursY++
 			}
 		} else if keyString == "p" {
 			if len(e.clipboard) > 0 {
