@@ -324,11 +324,18 @@ func (e *Editor) handleKeyPress(b []byte) {
 				e.isYanking = false
 			}
 			e.isYanking = true
+		} else if keyString == "O" {
+			if e.mode == NormalMode {
+				e.mode = InsertMode
+				fmt.Print("\x1b[5 q")
+				e.workingLine = []string{}
+				e.file.contents = slices.Insert(e.file.contents, e.CurLine(), "")
+				e.resetVisualCursor()
+			}
 		} else if keyString == "o" {
 			if e.mode == NormalMode {
 				//change cursor to bar
 				e.mode = InsertMode
-				e.isDeleting = false
 				fmt.Print("\x1b[5 q")
 				e.workingLine = []string{}
 				e.file.contents = slices.Insert(e.file.contents, e.CurLine()+1, "")
