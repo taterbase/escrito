@@ -290,6 +290,9 @@ func (e *Editor) handleKeyPress(b []byte) {
 			} else {
 				e.isChanging = true
 			}
+		} else if keyString == "D" {
+			e.file.contents[e.CurLine()] = e.file.contents[e.CurLine()][:e.cursX]
+			e.cursX--
 		} else if keyString == "d" {
 				if e.isDeleting {
 					e.clipboard = e.file.contents[e.CurLine()]
