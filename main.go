@@ -105,11 +105,11 @@ type Editor struct {
 	mode Mode
 
 	workingLine []string
-	clipboard string
+	clipboard   string
 
-	isDeleting bool
-	isChanging bool
-	isYanking bool
+	isDeleting   bool
+	isChanging   bool
+	isYanking    bool
 	isCommanding bool
 
 	// This is super ghetto but just for now
@@ -303,13 +303,13 @@ func (e *Editor) handleKeyPress(b []byte) {
 			e.file.contents[e.CurLine()] = e.file.contents[e.CurLine()][:e.cursX]
 			e.cursX--
 		} else if keyString == "d" {
-				if e.isDeleting {
-					e.clipboard = e.file.contents[e.CurLine()]
-					e.file.contents = append(e.file.contents[:e.CurLine()], e.file.contents[e.CurLine()+1:]...)
-					e.isDeleting = false
-				} else {
-					e.isDeleting = true
-				}
+			if e.isDeleting {
+				e.clipboard = e.file.contents[e.CurLine()]
+				e.file.contents = append(e.file.contents[:e.CurLine()], e.file.contents[e.CurLine()+1:]...)
+				e.isDeleting = false
+			} else {
+				e.isDeleting = true
+			}
 		} else if keyString == "P" {
 			if len(e.clipboard) > 0 {
 				e.file.contents = slices.Insert(e.file.contents, e.CurLine(), e.clipboard)
