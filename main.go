@@ -433,11 +433,12 @@ func (e *Editor) Display() {
 	signal.Notify(resize, syscall.SIGWINCH)
 	go func() {
 		for range resize {
-			_, h, err := term.GetSize(int(os.Stdin.Fd()))
+			w, h, err := term.GetSize(int(os.Stdin.Fd()))
 			if err != nil {
 				handleError(err)
 			}
 			e.height = h
+			e.width = w
 			e.redraw()
 		}
 	}()
