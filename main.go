@@ -7,10 +7,8 @@ import (
 	"os/signal"
 	"slices"
 	"strings"
-	"sync"
 	"syscall"
 
-	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 
 	tterm "tatersoft.com/escrito/term"
@@ -20,13 +18,7 @@ var (
 	usageMsg = `
 Example: esc file.go
 `
-
-	wg sync.WaitGroup
 )
-
-type state struct {
-	termios unix.Termios
-}
 
 func main() {
 	// Boilerplate from https://pkg.go.dev/golang.org/x/term#pkg-overview
@@ -222,25 +214,23 @@ func (e *Editor) resetVisualCursor() {
 	e.redraw()
 }
 
+func (e *Editor) bottomOut() {
+	e.topline = len(e.file.contents) - e.height
+}
+
 func (e *Editor) handleKeyPress(b []byte) {
 	switch e.mode {
 	case NormalMode:
 		keyString := string(b)
 		if b[0] == 4 { // Ctrl-D
-			e.topline = (e.topline + e.height/2)
-			if e.topline >= len(e.file.contents) {
-				e.topline = len(e.file.contents) - 1
-			}
+			e.topline = min(e.topline+e.height/2, len(e.file.contents)-e.height)
 		} else if b[0] == 19 { // Ctrl-S
 			err := e.saveFile()
 			if err != nil {
 				handleError(err)
 			}
 		} else if b[0] == 21 { // Ctrl-U
-			e.topline = (e.topline - e.height/2)
-			if e.topline < 0 {
-				e.topline = 0
-			}
+			e.topline = max(e.topline-e.height/2, 0)
 		} else if keyString == "j" {
 			if e.CurLine() < len(e.file.contents)-1 {
 				e.cursY++
@@ -266,7 +256,7 @@ func (e *Editor) handleKeyPress(b []byte) {
 				e.resetVisualCursor()
 			}
 		} else if keyString == "G" {
-			e.topline = len(e.file.contents) - 5
+			e.bottomOut()
 		} else if keyString == "i" {
 			if e.mode == NormalMode {
 				//change cursor to bar
