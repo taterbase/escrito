@@ -253,7 +253,7 @@ func (e *Editor) handleKeyPress(b []byte) {
 			//				e.resetVisualCursor()
 			//			}
 		} else if keyString == "l" {
-e.moveCursorRight()
+			e.moveCursorRight()
 		} else if keyString == "G" {
 			e.bottomOut()
 		} else if keyString == "i" {
@@ -399,11 +399,11 @@ func (e *Editor) moveCursorLeft() {
 }
 
 func (e *Editor) moveCursorRight() {
-			if e.cursX < len(e.file.contents[e.CurLine()]) {
-				e.cursX++
-				e.lastCursX = e.cursX
-				e.resetVisualCursor()
-			}
+	if e.cursX < len(e.file.contents[e.CurLine()]) {
+		e.cursX++
+		e.lastCursX = e.cursX
+		e.resetVisualCursor()
+	}
 }
 
 func (e *Editor) delete(idx int) {
