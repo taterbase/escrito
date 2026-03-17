@@ -233,25 +233,10 @@ func (e *Editor) handleKeyPress(b []byte) {
 			e.topline = max(e.topline-e.height/2, 0)
 		} else if keyString == "j" {
 			e.moveCursorDown()
-			//			if e.CurLine() < len(e.file.contents)-1 {
-			//				e.cursY++
-			//				e.cursX = e.lastCursX
-			//				e.resetVisualCursor()
-			//			}
 		} else if keyString == "k" {
 			e.moveCursorUp()
-			//			if e.CurLine() > 0 {
-			//				e.cursY--
-			//				e.cursX = e.lastCursX
-			//				e.resetVisualCursor()
-			//			}
 		} else if keyString == "h" {
 			e.moveCursorLeft()
-			//			if e.cursX > 0 {
-			//				e.cursX--
-			//				e.lastCursX = e.cursX
-			//				e.resetVisualCursor()
-			//			}
 		} else if keyString == "l" {
 			e.moveCursorRight()
 		} else if keyString == "G" {
