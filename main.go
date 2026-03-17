@@ -232,29 +232,28 @@ func (e *Editor) handleKeyPress(b []byte) {
 		} else if b[0] == 21 { // Ctrl-U
 			e.topline = max(e.topline-e.height/2, 0)
 		} else if keyString == "j" {
-			if e.CurLine() < len(e.file.contents)-1 {
-				e.cursY++
-				e.cursX = e.lastCursX
-				e.resetVisualCursor()
-			}
+			e.moveCursorDown()
+			//			if e.CurLine() < len(e.file.contents)-1 {
+			//				e.cursY++
+			//				e.cursX = e.lastCursX
+			//				e.resetVisualCursor()
+			//			}
 		} else if keyString == "k" {
-			if e.CurLine() > 0 {
-				e.cursY--
-				e.cursX = e.lastCursX
-				e.resetVisualCursor()
-			}
+			e.moveCursorUp()
+			//			if e.CurLine() > 0 {
+			//				e.cursY--
+			//				e.cursX = e.lastCursX
+			//				e.resetVisualCursor()
+			//			}
 		} else if keyString == "h" {
-			if e.cursX > 0 {
-				e.cursX--
-				e.lastCursX = e.cursX
-				e.resetVisualCursor()
-			}
+			e.moveCursorLeft()
+			//			if e.cursX > 0 {
+			//				e.cursX--
+			//				e.lastCursX = e.cursX
+			//				e.resetVisualCursor()
+			//			}
 		} else if keyString == "l" {
-			if e.cursX < len(e.file.contents[e.CurLine()]) {
-				e.cursX++
-				e.lastCursX = e.cursX
-				e.resetVisualCursor()
-			}
+e.moveCursorRight()
 		} else if keyString == "G" {
 			e.bottomOut()
 		} else if keyString == "i" {
@@ -373,6 +372,38 @@ func (e *Editor) handleKeyPress(b []byte) {
 			e.insert(string(b))
 		}
 	}
+}
+
+func (e *Editor) moveCursorUp() {
+	if e.CurLine() > 0 {
+		e.cursY--
+		e.cursX = e.lastCursX
+		e.resetVisualCursor()
+	}
+}
+
+func (e *Editor) moveCursorDown() {
+	if e.CurLine() < len(e.file.contents)-1 {
+		e.cursY++
+		e.cursX = e.lastCursX
+		e.resetVisualCursor()
+	}
+}
+
+func (e *Editor) moveCursorLeft() {
+	if e.cursX > 0 {
+		e.cursX--
+		e.lastCursX = e.cursX
+		e.resetVisualCursor()
+	}
+}
+
+func (e *Editor) moveCursorRight() {
+			if e.cursX < len(e.file.contents[e.CurLine()]) {
+				e.cursX++
+				e.lastCursX = e.cursX
+				e.resetVisualCursor()
+			}
 }
 
 func (e *Editor) delete(idx int) {
