@@ -111,7 +111,7 @@ type Editor struct {
 }
 
 func NewEditor(w, h int) *Editor {
-	return &Editor{
+	e := &Editor{
 		width:  w,
 		height: h,
 
@@ -124,6 +124,14 @@ func NewEditor(w, h int) *Editor {
 
 		isOpen: true,
 	}
+
+	e.UpdateSize(w, h)
+	return e
+}
+
+func (e *Editor) UpdateSize(w, h int) {
+	e.width = w
+	e.height = h - 1 // take into account command bar
 }
 
 func (e *Editor) CurLine() int {
