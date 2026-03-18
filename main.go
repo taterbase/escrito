@@ -132,6 +132,8 @@ func NewEditor(w, h int) *Editor {
 func (e *Editor) UpdateSize(w, h int) {
 	e.width = w
 	e.height = h - 1 // take into account command bar
+	// Setting the scroll region so the terminal can handle scrolling for us
+	fmt.Printf("\x1b[%d;%dr", 1, e.height)
 }
 
 func (e *Editor) CurLine() int {
@@ -185,7 +187,27 @@ func (e *Editor) saveFile() error {
 	return err
 }
 
-func (e *Editor) resetVisualCursor() {
+func (e *Editor) newRedrawCursor(newX, newY int) {
+	if newY != e.cursY {
+		e.cursX = e.lastCursX
+		if newY > e.cursY {
+			fmt.Print("\x1bD")
+			e.cursY = newY
+			e.recalculateCursor()
+			if e.cursY != newY { // Kind of a hack to see if we scrolled
+				e.topline++
+				fmt.Printf("\x1b[%d;%dH", e.cursY+1, 1) // Go to beginning of line to print
+				fmt.Print(e.file.contents[e.CurLine()])
+			}
+			fmt.Printf("\x1b[%d;%dH", e.cursY+1, e.visCursX) // reposition cursor
+		}
+	}
+}
+
+func (e *Editor) recalculateCursor() {
+	if e.cursY >= e.height {
+		e.cursY = e.height - 1
+	}
 	e.visCursX = 1
 	line := e.file.contents[e.CurLine()]
 	xEnd := len(line)
@@ -211,6 +233,10 @@ func (e *Editor) resetVisualCursor() {
 		}
 	}
 
+}
+
+func (e *Editor) resetVisualCursor() {
+	e.recalculateCursor()
 	if e.CurLine()-e.topline >= e.height {
 		e.topline++
 		e.cursY--
@@ -339,7 +365,6 @@ func (e *Editor) handleKeyPress(b []byte) {
 		} else if keyString == ":" {
 			e.isCommanding = true
 		}
-		e.redraw()
 	case InsertMode:
 		if b[0] == 27 { // escape
 			e.mode = NormalMode
@@ -377,9 +402,7 @@ func (e *Editor) moveCursorUp() {
 
 func (e *Editor) moveCursorDown() {
 	if e.CurLine() < len(e.file.contents)-1 {
-		e.cursY++
-		e.cursX = e.lastCursX
-		e.resetVisualCursor()
+		e.newRedrawCursor(e.cursX, e.cursY+1)
 	}
 }
 
